@@ -2,8 +2,8 @@ import telebot
 from telebot import types
 import time
 import os
+from flask import Flask, request
 import threading
-from flask import Flask
 
 # ==================== YOUR BOT TOKEN ====================
 BOT_TOKEN = "8234675036:AAFIWLxSxeaT0-VGt_wUwDySCJbHS_0NTN0"
@@ -13,10 +13,6 @@ bot = telebot.TeleBot(BOT_TOKEN)
 
 # Create Flask app for port binding
 app = Flask(__name__)
-
-@app.route('/')
-def home():
-    return "Solar Calculator Bot is running!"
 
 # Store user data temporarily
 user_data = {}
@@ -43,7 +39,7 @@ PRODUCT_CATALOG = {
         {"Type": "Three Phase", "Model": "S6-EH3P12K02-NV-YD-L", "Capacity": "12 KW", "Wholesale": "6,450,000", "Retail": "6,850,000", "Warranty": "5 Years"},
         {"Type": "Three Phase", "Model": "S6-EH3P15K02-NV-YD-L", "Capacity": "15 KW", "Wholesale": "7,300,000", "Retail": "7,700,000", "Warranty": "5 Years"}
     ],
-    "Dyness": [  # Changed from DVNESS to Dyness
+    "Dyness": [
         {"Type": "Low Voltage Battery", "Model": "POWER BRICK", "Capacity": "51.2V, 280Ah", "Wholesale": "7,190,000", "Retail": "7,490,000", "Warranty": "5+5 Years"}
     ]
 }
@@ -144,6 +140,34 @@ def calculate_with_specific_products(total_w, hours):
         "total_cost": total_cost
     }
 
+@app.route('/')
+def home():
+    return "Solar Calculator Bot is running!"
+
+# Webhook route for Telegram
+@app.route('/webhook', methods=['POST'])
+def webhook():
+    if request.headers.get('content-type') == 'application/json':
+        json_string = request.get_data().decode('utf-8')
+        update = telebot.types.Update.de_json(json_string)
+        bot.process_new_updates([update])
+        return 'OK', 200
+    return 'Bad Request', 400
+
+# Set webhook on startup
+def set_webhook():
+    # Get your Render app URL
+    render_url = os.environ.get('RENDER_EXTERNAL_URL', 'https://hsuchoflask.onrender.com')
+    webhook_url = f"{render_url}/webhook"
+    
+    try:
+        bot.remove_webhook()
+        time.sleep(1)
+        bot.set_webhook(url=webhook_url)
+        print(f"Webhook set to: {webhook_url}")
+    except Exception as e:
+        print(f"Error setting webhook: {e}")
+
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     try:
@@ -152,9 +176,9 @@ def send_welcome(message):
 
 ဆိုလာစနစ်တွက်ချက်မှုအတွက် အဆင့် ၅ ဆင့်ဖြင့် တွက်ချက်ပေးပါမယ်:
 
-1. စုစုပေါင်းစွမ်းအင်သုံး စွဲမှု
+1. စုစုပေါင်းစွမ်းအင်သုံးစွဲမှု
 2. ဘက်ထရီအရွယ်အစား
-3. ဆိုလာပြား လိုအပ်ချက်
+3. ဆို�လာပြားလိုအပ်ချက်
 4. အင်ဗာတာအရွယ်အစား
 5. *Charger Controller*
 
@@ -187,7 +211,7 @@ def start_calculation(message):
         ]
         markup.add(*buttons)
         
-        msg = bot.reply_to(message, "🔌 *သင့်စုစုပေါင်း ဝပ်အား (W) ကိုသိပါသလား?*\n\nအောက်က လေးထောင့်ခလုတ်မှနှိပ်၍ ရွေးချယ်ပါ", reply_markup=markup, parse_mode='Markdown')
+        msg = bot.reply_to(message, "🔌 *သင့်စုစုပေါင်းဝပ်အား (W) ကိုသိပါသလား?*\n\nအောက်က လေးထောင့်ခလုတ်မှနှိပ်၍ ရွေးချယ်ပါ", reply_markup=markup, parse_mode='Markdown')
         bot.register_next_step_handler(msg, handle_wattage_knowledge)
     except Exception as e:
         print("Error in calculate:", e)
@@ -203,7 +227,7 @@ def handle_wattage_knowledge(message):
             bot.register_next_step_handler(msg, ask_usage_hours)
         elif response == "မသိပါ":
             wattage_guide = """
-*အဆင့် 1- သင့်စွမ်းအင်သုံး စွဲမှုကို အကဲဖြတ်ခြင်း။*
+*အဆင့် 1- သင့်စွမ်းအင်သုံးစွဲမှုကို အကဲဖြတ်ခြင်း။*
 
 *HP to Watt Conversion:*
 - 1 HP = 746 Watt
@@ -215,55 +239,55 @@ def handle_wattage_knowledge(message):
 
 *ပစ္စည်းစာရင်းများကြည့်ရန်:*
 
-🏠 *အိမ်သုံးပစ္စည်းများ:*
+🏠 *အိမ်သုံးပစ္စည်း�များ:*
 - LED မီးသီး (10W): 10-15W
 - ပန်ကာ (သေးငယ်သော): 50-75W
-- ပန် ကာ (ကြီး မားသော): 75-100W
+- ပန်ကာ (ကြီးမားသော): 75-100W
 - တီဗီ (LED 32-inch): 30-50W
 - တီဗီ (LED 55-inch): 60-100W
 - ရေခဲသေတ္တာ (သေးငယ်သော): 100-150W
 - ရေခဲသေတ္တာ (ပုံမှန်): 150-250W
 - ရေခဲသေတ္တာ (ကြီးမားသော): 250-350W
-- မိုက်ခရိုဝေ့ဖ်: 800-1200W
+- �မိုက်ခရိုဝေ့ဖ်: 800-1200W
 - လျှပ်စစ်အိုး: 1000-1500W
-- ရေ နွေးအိုး: 1500-2000W
-- လေအေးပေးစက် (1 HP): 746W
+- ရေနွေးအိုး: 1500-2000W
+- လေအေးပေး�စက် (1 HP): 746W
 - လေအေးပေးစက် (1.5 HP): 1119W
-- လေအေးပေးစက် (2 HP): 1492W
-- ကြိတ် စက်: 300-500W
-- အဝတ်လျှော် စက်: 500-1000W
+- လေအေးပေး�စက် (2 HP): 1492W
+- ကြိတ်စက်: 300-500W
+- အဝတ်လျှော်စက်: 500-1000W
 - အဝတ်ခြောက်စက်: 1000-1500W
 
-🏢 *ရုံးသုံးပစ္စည်းများ:*
+🏢 *ရုံးသုံးပစ္စည်း�များ:*
 - ကွန်ပျူတာ (Desktop): 200-300W
 - ကွန်ပျူတာ (Laptop): 50-100W
-- ပရင်တာ: 50-150W
--  မော်နီတာ: 20-50W
+- ပရင်�တာ: 50-150W
+- မော်နီတာ: 20-50W
 - ပရိုဂျက်တာ: 200-300W
-- ဖက်စ်စက်: 50-100W
+- ဖက်စ်�စက်: 50-100W
 - ရုံးမီးသီးများ: 20-40W
 - ရုံးပန်ကာများ: 75-150W
 
-🏭 *စက်ရုံသုံးပစ္စည်းများ:*
+🏭 *စက်ရုံသုံးပစ္စည်း�များ:*
 - ပန်ကာ (စက်ရုံ): 200-500W
 - မီးသီး (စက်ရုံ): 50-100W
 - ပန့်အား (သေးငယ်သော): 750-1500W
 - ပန့်အား (အလတ်စား): 1500-3000W
-- ပန့်အား (ကြီး မားသော): 3000-5000W
+- ပန့်အား (ကြီးမားသော): 3000-5000W
 - ကွန်ပရက်ဆာ (သေးငယ်သော): 1000-2000W
-- ကွန်ပရက်ဆာ (အလတ်စား): 2000-4000W
+- ကွန်ပရက်ဆာ (အလတ်�စား): 2000-4000W
 - ကွန်ပရက်ဆာ (ကြီးမားသော): 4000-7500W
-- ဂျင်နရေတာ (အရန်သုံး): 500-2000W
-- လျှပ် စစ်ကိရိယာများ: 500-3000W
+- ဂျင်�နရေတာ (အရန်သုံး): 500-2000W
+- လျှပ်စစ်�ကိရိယာများ: 500-3000W
 - စက်ကိရိယာများ: 1000-5000W
 
-*တွက်ချက်နည်း:*
+*တွက်ချက်�နည်း:*
 *Watt (W) = Voltage (V) × Current (A)*
-*စုစုပေါင်းဝပ်အား = ပစ္စည်းတစ်ခုချင်းစီ၏ ဝပ်အား ပေါင်းခြင်း*
+*စုစုပေါင်း�ဝပ်အား = ပစ္စည်း�တစ်ခုချင်းစီ၏ ဝပ်အား ပေါင်းခြင်း*
 
 *ဥပမာ ၁ (အိမ်သုံး):*
 - LED မီးသီး ၁၀ လုံး (10W) = 10 × 10W = 100W
-- ပန် ကာ ၂ လုံး (75W) = 2 × 75W = 150W  
+- ပန်ကာ ၂ လုံး (75W) = 2 × 75W = 150W  
 - တီဗီ ၁ လုံး (100W) = 1 × 100W = 100W
 - စုစုပေါင်း = 100W + 150W + 100W = 350W
 
@@ -290,11 +314,11 @@ def ask_usage_hours(message):
         total_w = int(message.text)
         
         if total_w <= 0:
-            bot.reply_to(message, "❌ ဝပ်အားသည် 0 ထက်ကြီး ရပါမယ်")
+            bot.reply_to(message, "❌ ဝပ်အားသည် 0 ထက်ကြီးရပါမယ်")
             return
             
         user_data[chat_id]['total_w'] = total_w
-        msg = bot.reply_to(message, f"⏰ *တစ်ရက်ကိုဘယ် နှနာရီသုံးမှာလဲ?*\n\nဥပမာ: 6", parse_mode='Markdown')
+        msg = bot.reply_to(message, f"⏰ *တစ်ရက်ကိုဘယ်နှနာရီသုံးမှာလဲ?*\n\nဥပမာ: 6", parse_mode='Markdown')
         bot.register_next_step_handler(msg, ask_product_selection)
     except ValueError:
         bot.reply_to(message, "❌ ကျေးဇူးပြု၍ ဂဏန်းမှန်မှန်ထည့်ပါ\n\nဥပမာ: 500")
@@ -308,7 +332,7 @@ def ask_product_selection(message):
         hours = float(message.text)
         
         if hours <= 0 or hours > 24:
-            bot.reply_to(message, "❌ သုံးမည့် နာရီသည် 1 မှ 24 ကြားရှိရပါမယ်")
+            bot.reply_to(message, "❌ သုံးမည့်နာရီသည် 1 မှ 24 ကြား�ရှိရပါမယ်")
             return
             
         user_data[chat_id]['hours'] = hours
@@ -320,10 +344,10 @@ def ask_product_selection(message):
         ]
         markup.add(*buttons)
         
-        msg = bot.reply_to(message, "🔧 *ဘယ် လိုပစ္စည်းတွေသုံးမှာလဲ?*", reply_markup=markup, parse_mode='Markdown')
+        msg = bot.reply_to(message, "🔧 *ဘယ်လိုပစ္စည်းတွေသုံးမှာလဲ?*", reply_markup=markup, parse_mode='Markdown')
         bot.register_next_step_handler(msg, process_product_selection)
     except ValueError:
-        bot.reply_to(message, "❌ ကျေးဇူးပြု၍ ဂဏန်းမှန် မှန်ထည့်ပါ\n\nဥပမာ: 6")
+        bot.reply_to(message, "❌ ကျေးဇူးပြု၍ ဂဏန်းမှန်မှန်ထည့်ပါ\n\nဥပမာ: 6")
     except Exception as e:
         print("Error in ask_product_selection:", e)
         bot.reply_to(message, "❌ အမှားတစ်ခုဖြစ်နေပါတယ်")
@@ -333,7 +357,7 @@ def process_product_selection(message):
         chat_id = message.chat.id
         selection = message.text
         
-        if selection == "A To Z ပစ္စည်းသုံးမည်":
+        if selection == "A To Z ပစ္စည်းသုံး�မည်":
             total_w = user_data[chat_id]['total_w']
             hours = user_data[chat_id]['hours']
             
@@ -344,10 +368,10 @@ def process_product_selection(message):
             response = f"""
 📊 *Hsu Cho Solar Calculator - တွက်ချက်မှုရလဒ်များ (A To Z ပစ္စည်းများဖြင့်)*
 
-📝 *စွမ်းအင်သုံး စွဲမှုစာရင်း:*
+📝 *စွမ်းအင်သုံးစွဲမှုစာရင်း:*
 • *စုစုပေါင်းဝပ်အား:* {total_w}W
-• *နေ့စဉ်သုံးစွဲမည့်နာရီ:* {hours}h
-• *စုစုပေါင်းစွမ်းအင်သုံး စွဲမှု:* {result['daily_wh']:.0f} Wh/ရက်
+• *နေ့စဉ်သုံး�စွဲမည့်နာရီ:* {hours}h
+• *စုစုပေါင်း�စွမ်းအင်သုံးစွဲမှု:* {result['daily_wh']:.0f} Wh/ရက်
 
 🏭 *အကြံပြုထားသော ပစ္စည်းများ:*
 
@@ -359,13 +383,13 @@ def process_product_selection(message):
 
 🔋 *ဘက်ထရီ (Dyness):*
    - {result['batteries_needed']} လုံး × {PRODUCT_CATALOG['Dyness'][0]['Model']} ({PRODUCT_CATALOG['Dyness'][0]['Capacity']})
-   - စျေးနှုန်း: {result['battery_cost']:,} ကျပ်
+   - စျေး�နှုန်း: {result['battery_cost']:,} ကျပ်
    - အမျိုးအစား: {PRODUCT_CATALOG['Dyness'][0]['Type']}
    - အာမခံ: {PRODUCT_CATALOG['Dyness'][0]['Warranty']}
 
 ⚡ *အင်ဗာတာ (Solis):*
    - 1 လုံး × {result['suitable_inverter']['Model']} ({result['suitable_inverter']['Capacity']})
-   - စျေးနှုန်း: {result['inverter_cost']:,} ကျပ်
+   - စျေး�နှုန်း: {result['inverter_cost']:,} ကျပ်
    - အမျိုးအစား: {result['suitable_inverter']['Type']}
    - အာမခံ: {result['suitable_inverter']['Warranty']}
 
@@ -375,17 +399,21 @@ def process_product_selection(message):
 💰 *စုစုပေါင်းကုန်ကျစရိတ်:* {result['total_cost']:,} ကျပ်
 
 💡 *အထူးအကြံပြုချက်များ:*
-   - *LiFePO4 ဘက်ထရီများသည် သက်တမ်း ရှည်ပြီး စိတ်ချရမှုရှိသည်*
+   - *LiFePO4 ဘက်ထရီများသည် သက်တမ်းရှည်ပြီး စိတ်ချရမှုရှိသည်*
    - *80% Depth of Discharge အထိ အသုံးပြုနိုင်ပါသည်*
-   - *ဆိုလာပြားများကို နေရောင်ကောင်း စွာ ရသော နေရာတွင် တပ်ဆင်ပါ*
-   - *အင်ဗာတာကို လေဝင်လေထွက်ကောင်းသော နေရာတွင် ထား ရှိပါ*
+   - *ဆိုလာပြား�များ�ကို နေရောင်ကောင်းစွာရသော နေရာတွင် တပ်ဆင်ပါ*
+   - *အင်ဗာတာကို �လေဝင်လေထွက်ကောင်းသော နေရာတွင် ထားရှိပါ*
 
-📞 *အသေး စိတ်သိ ရှိလိုပါက ဆက်သွယ်ရန်: Hsu Cho Solar*
+📞 *အသေးစိတ်သိရှိလိုပါက ဆက်သွယ်ရန်: Hsu Cho Solar*
             """
             
-            bot.send_message(chat_id, response, parse_mode='Markdown', reply_markup=types.ReplyKeyboardRemove())
+            # Add "Calculate Again" button
+            markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1)
+            markup.add(types.KeyboardButton("🔄 ထပ်တွက်ရန်"))
             
-        elif selection == "အခြားပစ္စည်းသုံး မည်":
+            bot.send_message(chat_id, response, parse_mode='Markdown', reply_markup=markup)
+            
+        elif selection == "အခြားပစ္စည်းသုံးမည်":
             markup = types.ReplyKeyboardMarkup(one_time_keyboard=True, resize_keyboard=True, row_width=2)
             buttons = [types.KeyboardButton(b_type) for b_type in BATTERY_TYPES]
             markup.add(*buttons)
@@ -468,74 +496,75 @@ def process_battery_voltage(message):
         controller_type, controller_amps = calculate_charge_controller(solar_w, battery_voltage)
         
         result = f"""
-📊 *Hsu Cho Solar Calculator - တွက်ချက်မှုရလဒ်များ*
+📊 *Hsu Cho Solar Calculator - တွက်ချက်�မှုရလဒ်များ*
 
 🔋 *ဘက်ထရီအမျိုးအစား:* {battery_type}
 ⚡ *ဘက်ထရီဗို့အား:* {battery_voltage}V
 ☀️ *ဆိုလာပြား:* {panel_wattage}W
         
-📝 *စွမ်းအင်သုံးစွဲမှုစာရင်း:*
-• *စုစုပေါင်းဝပ်အား:* {total_w}W
-• *နေ့စဉ်သုံး စွဲမည့်နာရီ:* {hours}h
-• *စုစုပေါင်းစွမ်းအင်သုံး စွဲမှု:* {daily_wh:.0f} Wh/ရက်
+📝 *စွမ်းအင်သုံး�စွဲမှုစာရင်း:*
+• *စုစုပေါင်း�ဝပ်အား:* {total_w}W
+• *နေ့စဉ်သုံး�စွဲမည့်နာရီ:* {hours}h
+• *စုစုပေါင်း�စွမ်းအင်သုံးစွဲမှု:* {daily_wh:.0f} Wh/ရက်
 
 🔋 *ဘက်ထရီအရွယ်အစား:* _{battery_ah:.0f} Ah {battery_voltage}V_
    - {battery_type} ဘက်ထရီ (DOD: {dod_factor*100:.0f}%)
    - {battery_ah:.0f}Ah ဘက်ထရီ ၁လုံး (သို့) သေးငယ်သောဘက်ထရီများကို parallel ချိတ်ဆက်အသုံးပြုနိုင်သည်
 
-☀️ *ဆိုလာပြား လိုအပ်ချက်:* _{solar_w:.0f} W_
-   - {panel_wattage}W ဆို လာပြား {num_panels} ချပ်
+☀️ *ဆို�လာပြားလိုအပ်ချက်:* _{solar_w:.0f} W_
+   - {panel_wattage}W ဆို�လာပြား {num_panels} ချပ်
 
 ⚡ *အင်ဗာတာအရွယ်အစား:* _{inverter_w:.0f} W Pure Sine Wave_
-   - စုစုပေါင်းဝပ်အားထက် 30% ပိုကြီးသော အင်ဗာတာရွေးချယ်ထားသည်
+   - စုစုပေါင်း�ဝပ်အားထက် 30% ပိုကြီးသော အင်ဗာတာရွေးချယ်ထားသည်
 
 🎛️ *Charger Controller:* _{controller_type} {controller_amps:.1f}A_
    - {controller_type} controller {controller_amps:.1f}A အရွယ်အစား
 
-💡 *အထူးအကြံပြုချက် များ:*
+💡 *အထူးအကြံပြုချက်များ:*
 """
         
         if battery_type.lower() == "lifepo4":
             result += """
-   - *LiFePO4 ဘက်ထရီများသည် သက်တမ်း ရှည်ပြီး စိတ်ချရမှု ရှိသည်*
+   - *LiFePO4 ဘက်ထရီများသည် သက်တမ်းရှည်ပြီး စိတ်ချရမှုရှိသည်*
    - *80% Depth of Discharge အထိ အသုံးပြုနိုင်ပါသည်*
 """
         elif battery_type.lower() == "gel":
             result += """
-   - *Gel ဘက်ထရီများသည် maintenance-free ဖြစ်ပြီး အတွင်းပိုင်းဖိအား နည်းပါသည်*
+   - *Gel ဘက်ထရီများသည် maintenance-free ဖြစ်ပြီး အတွင်းပိုင်းဖိအားနည်းပါသည်*
    - *60% Depth of Discharge အထိ အသုံးပြုနိုင်ပါသည်*
 """
         else:
             result += """
-   - *Lead-Acid ဘက်ထရီများသည် စျေး နှုန်းချိုသာပြီး  ရေပြန်ဖြည့်ရန် လိုအပ်ပါသည်*
+   - *Lead-Acid ဘက်ထရီများသည် စျေးနှုန်းချိုသာပြီး ရေပြန်ဖြည့်ရန် လိုအပ်ပါသည်*
    - *50% Depth of Discharge အထိ အသုံးပြုနိုင်ပါသည်*
 """
         
         result += """
-   - *ဆို လာပြားများကို နေရောင်ကောင်း စွာရသော နေ ရာတွင် တပ်ဆင်ပါ*
-   - *အင်ဗာတာကို လေဝင် လေထွက်ကောင်းသော နေရာ တွင် ထား ရှိပါ*
+   - *ဆိုလာပြားများကို နေရောင်ကောင်းစွာရသော နေရာတွင် တပ်ဆင်ပါ*
+   - *အင်ဗာတာကို လေဝင်လေထွက်ကောင်းသော နေရာတွင် ထားရှိပါ*
 
-📞 *အသေး စိတ်သိ ရှိလိုပါက ဆက်သွယ်ရန်: Hsu Cho Solar*
+📞 *အသေးစိတ်သိရှိလိုပါက ဆက်သွယ်ရန်: Hsu Cho Solar*
 """
         
-        bot.send_message(chat_id, result, parse_mode='Markdown', reply_markup=types.ReplyKeyboardRemove())
+        # Add "Calculate Again" button
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1)
+        markup.add(types.KeyboardButton("🔄 ထပ်တွက်ရန်"))
+        
+        bot.send_message(chat_id, result, parse_mode='Markdown', reply_markup=markup)
         
     except Exception as e:
         print("Error in process_battery_voltage:", e)
         bot.reply_to(message, "❌ အမှားတစ်ခုဖြစ်နေပါတယ်")
 
-def run_flask():
-    app.run(host='0.0.0.0', port=5000)
-
-def run_bot():
-    print("Bot is running...")
-    bot.polling(none_stop=True)
+# Handle "Calculate Again" button
+@bot.message_handler(func=lambda message: message.text == "🔄 ထပ်တွက်ရန်")
+def handle_calculate_again(message):
+    start_calculation(message)
 
 if __name__ == "__main__":
-    # Start Flask server in a separate thread
-    flask_thread = threading.Thread(target=run_flask)
-    flask_thread.daemon = True
-    flask_thread.start()
+    # Set webhook on startup
+    set_webhook()
     
-    # Start the bot
-    run_bot()
+    # Start Flask app
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
